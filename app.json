@@ -1,0 +1,75 @@
+{
+  "expo": {
+    "name": "ScribeAI",
+    "slug": "scribe-ai-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1A3650"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.medhasolutions.scribeai",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "ScribeAI needs microphone access to record and transcribe clinical sessions in real-time.",
+        "NSSpeechRecognitionUsageDescription": "ScribeAI uses speech recognition to provide real-time transcription.",
+        "UIBackgroundModes": [
+          "audio",
+          "fetch"
+        ],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1A3650"
+      },
+      "package": "com.medhasolutions.scribeai",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.FOREGROUND_SERVICE"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow ScribeAI to access your microphone for clinical session recording and real-time transcription."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true,
+            "kotlinVersion": "1.8.10"
+          },
+          "ios": {
+            "deploymentTarget": "13.4"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_EAS_PROJECT_ID"
+      }
+    },
+    "owner": "medhasolutions"
+  }
+}
