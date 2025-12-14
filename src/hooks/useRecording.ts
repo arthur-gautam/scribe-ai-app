@@ -1,7 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Audio } from 'expo-av';
 import { Platform } from 'react-native';
+import { Audio } from 'expo-av';
 import { deepgramService } from '../services/deepgram';
+import { ExpoPlayAudioStream } from '@quiztr/expo-audio-stream';
+import { Buffer } from 'buffer';
 
 interface RecordingState {
   isRecording: boolean;
@@ -24,7 +26,7 @@ export function useRecording() {
     isConnectedToDeepgram: false,
   });
 
-  const recordingRef = useRef<Audio.Recording | null>(null);
+  const subscriptionRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const transcriptRef = useRef<string>('');
 
@@ -79,42 +81,22 @@ export function useRecording() {
       // Connect to Deepgram first
       await deepgramService.connect(handleTranscript);
 
-      // Create and prepare recording
-      const { recording } = await Audio.Recording.createAsync(
-        {
-          ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
-          android: {
-            extension: '.wav',
-            outputFormat: Audio.AndroidOutputFormat.DEFAULT,
-            audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
-            sampleRate: 16000,
-            numberOfChannels: 1,
-            bitRate: 256000,
-          },
-          ios: {
-            extension: '.wav',
-            outputFormat: Audio.IOSOutputFormat.LINEARPCM,
-            audioQuality: Audio.IOSAudioQuality.HIGH,
-            sampleRate: 16000,
-            numberOfChannels: 1,
-            bitRate: 256000,
-            linearPCMBitDepth: 16,
-            linearPCMIsBigEndian: false,
-            linearPCMIsFloat: false,
-          },
+      const { subscription } = await ExpoPlayAudioStream.startRecording({
+        sampleRate: 16000,
+        channels: 1,
+        encoding: 'pcm_16bit',
+        interval: 100, // 100ms chunks
+        onAudioStream: async (event: any) => {
+            if (event.data) {
+                // Convert base64 to ArrayBuffer using Buffer (works in RN with polyfill)
+                const buffer = Buffer.from(event.data, 'base64');
+                const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+                deepgramService.sendAudio(arrayBuffer);
+            }
         },
-        // Stream audio to Deepgram
-        (status) => {
-          if (status.isRecording && status.metering !== undefined) {
-            // Audio data would be streamed here
-            // Note: expo-av doesn't provide raw audio chunks directly
-            // For production, use react-native-live-audio-stream
-          }
-        },
-        100 // Update every 100ms
-      );
+      });
 
-      recordingRef.current = recording;
+      subscriptionRef.current = subscription;
 
       // Reset transcript
       transcriptRef.current = '';
@@ -156,34 +138,39 @@ export function useRecording() {
       // Disconnect from Deepgram
       await deepgramService.disconnect();
 
-      if (recordingRef.current) {
-        await recordingRef.current.stopAndUnloadAsync();
-        const uri = recordingRef.current.getURI();
+      let uri: string | null = null;
+      try {
+        const recording = await ExpoPlayAudioStream.stopRecording();
+        uri = recording?.fileUri ?? null;
+      } catch (e) {
+        console.warn('Error stopping recording:', e);
+      }
 
-        recordingRef.current = null;
+      if (subscriptionRef.current) {
+        subscriptionRef.current.remove();
+        subscriptionRef.current = null;
+      }
 
-        setState(prev => ({
-          ...prev,
-          isRecording: false,
-          isPaused: false,
-          audioUri: uri,
-          isConnectedToDeepgram: false,
-        }));
+      setState(prev => ({
+        ...prev,
+        isRecording: false,
+        isPaused: false,
+        audioUri: uri,
+        isConnectedToDeepgram: false,
+      }));
 
-        // Reset audio mode
+      // Reset audio mode
         await Audio.setAudioModeAsync({
           allowsRecordingIOS: false,
         });
 
-        return {
-          success: true,
-          audioUri: uri,
-          duration: state.duration,
-          transcript: transcriptRef.current,
-        };
-      }
+      return {
+        success: true,
+        audioUri: uri,
+        duration: state.duration,
+        transcript: transcriptRef.current,
+      };
 
-      return { success: false, error: 'No active recording' };
     } catch (error: any) {
       console.error('Stop recording error:', error);
       return { success: false, error: error.message };
@@ -193,9 +180,7 @@ export function useRecording() {
   // Pause recording
   const pauseRecording = useCallback(async () => {
     try {
-      if (recordingRef.current && state.isRecording && !state.isPaused) {
-        await recordingRef.current.pauseAsync();
-
+      if (state.isRecording && !state.isPaused) {
         if (timerRef.current) {
           clearInterval(timerRef.current);
           timerRef.current = null;
@@ -213,9 +198,8 @@ export function useRecording() {
   // Resume recording
   const resumeRecording = useCallback(async () => {
     try {
-      if (recordingRef.current && state.isPaused) {
-        await recordingRef.current.startAsync();
-
+      if (state.isPaused) {
+        // Resume timer
         timerRef.current = setInterval(() => {
           setState(prev => ({
             ...prev,
@@ -243,8 +227,8 @@ export function useRecording() {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
-      if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync();
+      if (subscriptionRef.current) {
+          subscriptionRef.current.remove();
       }
       deepgramService.disconnect();
     };
