@@ -8,15 +8,18 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "jest"
   },
   "dependencies": {
     "@deepgram/sdk": "^4.11.2",
     "@google/generative-ai": "^0.24.1",
+    "@quiztr/expo-audio-stream": "^0.2.4",
     "@react-native-async-storage/async-storage": "1.21.0",
     "@react-navigation/native": "^6.1.9",
     "@react-navigation/native-stack": "^6.9.17",
     "@supabase/supabase-js": "^2.39.0",
+    "buffer": "^6.0.3",
     "expo": "~52.0.0",
     "expo-audio-stream": "^0.1.13",
     "expo-auth-session": "~6.0.0",
@@ -39,11 +42,16 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@testing-library/react-hooks": "^8.0.1",
+    "@types/jest": "^30.0.0",
     "@types/react": "~18.3.12",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "eslint": "^8.57.0",
     "eslint-config-expo": "^8.0.0",
+    "jest": "^30.2.0",
+    "react-test-renderer": "^18.3.1",
+    "ts-jest": "^29.4.6",
     "typescript": "~5.3.3"
   },
   "private": true
